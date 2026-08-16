@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Connexion Admin{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:center;min-height:60vh">
+  <div class="card fade-up" style="width:360px">
+    <div class="card-body" style="padding:32px">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:24px;margin-bottom:8px">🔒</div>
+        <div style="font-size:16px;font-weight:700;color:var(--navy)">Administration</div>
+        <div class="section-sub">PredEntreVar · CCI du Var</div>
+      </div>
+      {% if error %}
+      <div class="alert alert-warning mb-16">{{ error }}</div>
+      {% endif %}
+      <form method="POST">
+        <div class="mb-16">
+          <label class="form-label">Identifiant</label>
+          <input type="text" class="form-input" value="admin" readonly style="background:var(--surface2)">
+        </div>
+        <div class="mb-24">
+          <label class="form-label">Mot de passe</label>
+          <input type="password" name="password" class="form-input" placeholder="••••••••••••" autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:11px">Se connecter</button>
+      </form>
+      <p style="text-align:center;font-size:12px;color:var(--text-3);margin-top:16px">Identifiants : admin / PredEntreVar2026!</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

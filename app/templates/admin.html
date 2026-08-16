@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Administration{% endblock %}
+{% block content %}
+
+<div class="flex items-c jc-sb mb-24 fade-up">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--navy)">Back-office Administration</h1>
+    <p class="section-sub">Métriques du modèle ML · Logs des prédictions</p>
+  </div>
+  <div class="flex gap-8">
+    <a href="/" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">← Dashboard</a>
+    <a href="/admin/logout" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">Déconnexion</a>
+  </div>
+</div>
+
+<!-- Métriques -->
+<div class="grid g-4 mb-16 fade-up">
+  <div class="kpi">
+    <span class="kpi-accent" style="background:var(--blue)"></span>
+    <div class="kpi-label">R² Ridge</div>
+    <div class="kpi-val" style="color:var(--blue)">{{ ml.r2 }}</div>
+    <div class="kpi-sub">Jeu de test (20%)</div>
+  </div>
+  <div class="kpi">
+    <span class="kpi-accent" style="background:var(--green)"></span>
+    <div class="kpi-label">RMSE</div>
+    <div class="kpi-val" style="color:var(--green)">{{ ml.rmse }}</div>
+    <div class="kpi-sub">Créations (erreur type)</div>
+  </div>
+  <div class="kpi">
+    <span class="kpi-accent" style="background:var(--purple)"></span>
+    <div class="kpi-label">MAE</div>
+    <div class="kpi-val" style="color:var(--purple)">{{ ml.mae }}</div>
+    <div class="kpi-sub">Erreur absolue moyenne</div>
+  </div>
+  <div class="kpi">
+    <span class="kpi-accent" style="background:var(--amber)"></span>
+    <div class="kpi-label">Prédictions loggées</div>
+    <div class="kpi-val" style="color:var(--amber)">{{ predictions|length }}</div>
+    <div class="kpi-sub">Table predictions (BDD)</div>
+  </div>
+</div>
+
+<!-- Dernières prédictions -->
+<div class="card fade-up">
+  <div class="card-header" style="padding-bottom:16px">
+    <div class="section-title">Dernières prédictions — table <code style="font-size:11px;background:var(--surface2);padding:2px 6px;border-radius:4px">predictions</code></div>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date / Heure</th>
+          <th>Secteur</th>
+          <th>Année</th>
+          <th>Chômage</th>
+          <th>Prédiction</th>
+          <th>IC 95%</th>
+          <th>Modèle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in predictions %}
+        <tr>
+          <td style="color:var(--text-3);font-size:12px">{{ p.created_at.strftime('%d/%m/%Y %H:%M') if p.created_at else '—' }}</td>
+          <td>{{ p.secteur[:38] }}</td>
+          <td>{{ p.annee_cible }}</td>
+          <td>{{ p.taux_chomage_hyp }}%</td>
+          <td><strong style="color:var(--blue)">{{ "{:,}".format(p.valeur_predite|int).replace(',', ' ') }}</strong></td>
+          <td style="font-size:12px;color:var(--text-3)">[{{ "{:,}".format((p.intervalle_bas or 0)|int).replace(',', ' ') }} – {{ "{:,}".format((p.intervalle_haut or 0)|int).replace(',', ' ') }}]</td>
+          <td><span class="badge badge-blue">{{ p.modele }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:32px">Aucune prédiction enregistrée</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

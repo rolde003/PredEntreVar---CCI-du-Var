@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PredEntreVar{% endblock %} — CCI du Var</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:#0F2B4C; --blue:#1B4F9B; --blue-mid:#2563B8;
+      --accent:#3B82F6; --green:#10B981; --amber:#F59E0B;
+      --red:#EF4444; --purple:#8B5CF6;
+      --bg:#F8FAFF; --surface:#FFFFFF; --surface2:#F1F5FD;
+      --border:rgba(27,79,155,.12); --border2:rgba(27,79,155,.06);
+      --text:#0F1C2E; --text-2:#4B5E7A; --text-3:#8FA3BF;
+      --ease-out:cubic-bezier(0.23,1,0.32,1);
+      --radius:12px; --radius-sm:8px;
+      --shadow:0 1px 3px rgba(15,43,76,.06),0 4px 16px rgba(15,43,76,.08);
+      --shadow-lg:0 8px 32px rgba(15,43,76,.14);
+    }
+    body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+    .navbar { position:sticky; top:0; z-index:100; background:rgba(15,43,76,.97); backdrop-filter:blur(12px); border-bottom:1px solid rgba(255,255,255,.08); padding:0 24px; height:52px; display:flex; align-items:center; justify-content:space-between; }
+    .navbar-left { display:flex; align-items:center; gap:32px; }
+    .brand { font-size:15px; font-weight:700; color:#fff; text-decoration:none; display:flex; align-items:center; gap:8px; letter-spacing:-.3px; }
+    .brand-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+    .nav-links { display:flex; gap:4px; }
+    .nav-link { font-size:13px; font-weight:500; color:rgba(255,255,255,.5); padding:6px 12px; border-radius:6px; text-decoration:none; transition:color 160ms var(--ease-out),background 160ms var(--ease-out); }
+    .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+    .nav-link.active { color:#fff; background:rgba(255,255,255,.12); }
+    .navbar-badge { font-size:11px; color:rgba(255,255,255,.3); border:1px solid rgba(255,255,255,.1); padding:3px 8px; border-radius:20px; }
+    .page { max-width:1280px; margin:0 auto; padding:28px 24px 60px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
+    .card-body { padding:20px 24px; }
+    .card-header { padding:18px 24px 0; display:flex; align-items:center; justify-content:space-between; }
+    .kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 22px; position:relative; overflow:hidden; transition:transform 200ms var(--ease-out),box-shadow 200ms var(--ease-out); }
+    .kpi:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+    .kpi-accent { position:absolute; top:0; left:0; width:3px; height:100%; border-radius:12px 0 0 12px; }
+    .kpi-label { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px; }
+    .kpi-val { font-size:26px; font-weight:700; letter-spacing:-1px; line-height:1; }
+    .kpi-sub { font-size:12px; color:var(--text-3); margin-top:6px; }
+    .section-title { font-size:13px; font-weight:600; color:var(--text); }
+    .section-sub { font-size:12px; color:var(--text-3); margin-top:2px; }
+    .btn { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; border:none; border-radius:var(--radius-sm); padding:9px 18px; cursor:pointer; font-family:inherit; transition:transform 120ms var(--ease-out),box-shadow 120ms var(--ease-out),background 120ms var(--ease-out); }
+    .btn:active { transform:scale(0.97); }
+    .btn-primary { background:var(--blue); color:#fff; box-shadow:0 2px 8px rgba(27,79,155,.3); }
+    .btn-primary:hover { background:var(--blue-mid); box-shadow:0 4px 16px rgba(27,79,155,.4); }
+    .btn-ghost { background:var(--surface2); color:var(--text-2); border:1px solid var(--border); }
+    .form-label { display:block; font-size:11px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+    .form-input, .form-select { width:100%; font-size:13px; font-family:inherit; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 12px; outline:none; appearance:none; transition:border-color 150ms var(--ease-out),box-shadow 150ms var(--ease-out); }
+    .form-input:focus, .form-select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+    .badge { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; }
+    .badge-blue { background:rgba(27,79,155,.1); color:var(--blue); }
+    .badge-green { background:rgba(16,185,129,.1); color:var(--green); }
+    .table { width:100%; border-collapse:collapse; font-size:13px; }
+    .table th { text-align:left; font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.5px; padding:10px 16px; border-bottom:1px solid var(--border); }
+    .table td { padding:11px 16px; border-bottom:1px solid var(--border2); color:var(--text); }
+    .table tr:last-child td { border-bottom:none; }
+    .table tr:hover td { background:var(--surface2); }
+    .alert { padding:10px 14px; border-radius:var(--radius-sm); font-size:13px; }
+    .alert-warning { background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); color:#92400E; }
+    .alert-success { background:rgba(16,185,129,.08); border:1px solid rgba(16,185,129,.2); color:#065F46; }
+    .alert-info { background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.2); color:#1E40AF; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation:fadeUp 280ms var(--ease-out) both; }
+    .fade-up-1 { animation-delay:50ms; }
+    .fade-up-2 { animation-delay:100ms; }
+    .fade-up-3 { animation-delay:150ms; }
+    .fade-up-4 { animation-delay:200ms; }
+    .grid { display:grid; gap:16px; }
+    .g-4 { grid-template-columns:repeat(4,1fr); }
+    .g-2 { grid-template-columns:repeat(2,1fr); }
+    .g-64 { grid-template-columns:6fr 4fr; }
+    .g-55 { grid-template-columns:1fr 1fr; }
+    @media(max-width:900px){ .g-4,.g-2,.g-64,.g-55{ grid-template-columns:1fr; } }
+    .flex { display:flex; } .items-c { align-items:center; } .jc-sb { justify-content:space-between; }
+    .gap-8 { gap:8px; } .gap-12 { gap:12px; }
+    .mb-4{margin-bottom:4px} .mb-8{margin-bottom:8px} .mb-16{margin-bottom:16px} .mb-24{margin-bottom:24px}
+    .mt-16{margin-top:16px} .mt-24{margin-top:24px}
+    footer { border-top:1px solid var(--border); padding:14px 24px; text-align:center; font-size:12px; color:var(--text-3); margin-top:48px; }
+    {% block extra_css %}{% endblock %}
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="navbar-left">
+    <a class="brand" href="/"><span class="brand-dot"></span>PredEntreVar</a>
+    <div class="nav-links">
+      <a class="nav-link {% if request.path=='/' %}active{% endif %}" href="/">Analyse</a>
+      <a class="nav-link {% if '/predict' in request.path %}active{% endif %}" href="/predict">Prédiction</a>
+      <a class="nav-link {% if '/admin' in request.path %}active{% endif %}" href="/admin">Admin</a>
+    </div>
+  </div>
+  <span class="navbar-badge">Ridge · R²=0,961 · CCI du Var</span>
+</nav>
+<div class="page">{% block content %}{% endblock %}</div>
+<footer>PredEntreVar — Mastère Data &amp; IA — IBOVI Rolde Chadrac — CCI du Var, Toulon — 2025-2026</footer>
+<script>
+  Chart.defaults.font.family="'Inter',system-ui,sans-serif";
+  Chart.defaults.font.size=12;
+  Chart.defaults.color='#8FA3BF';
+  Chart.defaults.plugins.legend.display=false;
+  Chart.defaults.plugins.tooltip.backgroundColor='#0F2B4C';
+  Chart.defaults.plugins.tooltip.titleColor='#fff';
+  Chart.defaults.plugins.tooltip.bodyColor='rgba(255,255,255,.7)';
+  Chart.defaults.plugins.tooltip.padding=10;
+  Chart.defaults.plugins.tooltip.cornerRadius=8;
+  Chart.defaults.plugins.tooltip.displayColors=false;
+  Chart.defaults.scale.grid.color='rgba(27,79,155,.06)';
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% block title %}Analyse EDA{% endblock %}
+{% block content %}
+
+<div class="flex items-c jc-sb mb-24 fade-up">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--navy)">Analyse des créations d'entreprises</h1>
+    <p class="section-sub">Var (DEP-83) · 2012–2024 · 17 secteurs A21 · Source : INSEE SIDE</p>
+  </div>
+  <div class="flex gap-8">
+    <span class="badge badge-blue">Modèle Ridge</span>
+    <span class="badge badge-green">R² = 0,961</span>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="grid g-4 mb-16">
+  <div class="kpi fade-up fade-up-1">
+    <span class="kpi-accent" style="background:var(--blue)"></span>
+    <div class="kpi-label">Créations 2024</div>
+    <div class="kpi-val" id="kpi-total" style="color:var(--blue)">—</div>
+    <div class="kpi-sub" id="kpi-var">chargement…</div>
+  </div>
+  <div class="kpi fade-up fade-up-2">
+    <span class="kpi-accent" style="background:var(--green)"></span>
+    <div class="kpi-label">R² Ridge</div>
+    <div class="kpi-val" style="color:var(--green)">0,961</div>
+    <div class="kpi-sub">★ Meilleur modèle</div>
+  </div>
+  <div class="kpi fade-up fade-up-3">
+    <span class="kpi-accent" style="background:var(--purple)"></span>
+    <div class="kpi-label">Chômage 2024</div>
+    <div class="kpi-val" id="kpi-cho" style="color:var(--purple)">6,4%</div>
+    <div class="kpi-sub">Zone emploi Toulon</div>
+  </div>
+  <div class="kpi fade-up fade-up-4">
+    <span class="kpi-accent" style="background:var(--amber)"></span>
+    <div class="kpi-label">Secteurs analysés</div>
+    <div class="kpi-val" style="color:var(--amber)">17</div>
+    <div class="kpi-sub">Nomenclature A21</div>
+  </div>
+</div>
+
+<!-- Graphiques ligne 1 -->
+<div class="grid g-64 mb-16 fade-up">
+  <div class="card">
+    <div class="card-header mb-16">
+      <div>
+        <div class="section-title">Évolution des créations (2012–2024)</div>
+        <div class="section-sub">Toutes formes légales · INSEE SIDE 2024</div>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:0">
+      <canvas id="chartEvolution" height="220"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header mb-16">
+      <div>
+        <div class="section-title">Répartition sectorielle</div>
+        <div class="section-sub">Top secteurs par année</div>
+      </div>
+      <select id="anneeSelect" class="form-select" style="width:auto">
+        <option value="2024" selected>2024</option>
+        <option value="2023">2023</option>
+        <option value="2022">2022</option>
+        <option value="2021">2021</option>
+        <option value="2020">2020</option>
+      </select>
+    </div>
+    <div class="card-body" style="padding-top:0">
+      <canvas id="chartSecteurs" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Graphiques ligne 2 -->
+<div class="grid g-55 fade-up">
+  <div class="card">
+    <div class="card-header mb-16">
+      <div>
+        <div class="section-title">Corrélation chômage ↔ créations</div>
+        <div class="section-sub">r = −0,961 · Variable principale du modèle</div>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:0">
+      <canvas id="chartCorr" height="200"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header mb-16">
+      <div>
+        <div class="section-title">Prédictions 2025 — tous secteurs</div>
+        <div class="section-sub">Modèle Ridge · Chômage 6,5%</div>
+      </div>
+      <a href="/predict" class="btn btn-primary" style="font-size:12px;padding:6px 14px">Simuler →</a>
+    </div>
+    <div class="card-body" style="padding-top:0">
+      <canvas id="chartPred" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// KPIs
+fetch('/api/stats').then(r=>r.json()).then(d=>{
+  document.getElementById('kpi-total').textContent = d.total_2024.toLocaleString('fr-FR');
+  const v = d.var_pct, el = document.getElementById('kpi-var');
+  el.textContent = (v>=0?'↑ +':'↓ ') + v + '% vs 2023';
+  el.style.color = v>=0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('kpi-cho').textContent = d.chomage_2024 + '%';
+});
+
+// Évolution barres
+fetch('/api/evolution').then(r=>r.json()).then(d=>{
+  new Chart(document.getElementById('chartEvolution'), {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [{
+        data: d.values,
+        backgroundColor: d.labels.map(y => y==2020 ? 'rgba(239,68,68,.7)' : 'rgba(27,79,155,.75)'),
+        borderRadius: 5,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      plugins: { tooltip: { callbacks: { label: c => c.raw.toLocaleString('fr-FR') + ' créations' } } },
+      scales: {
+        y: { ticks: { callback: v => (v/1000).toFixed(0)+'k' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+});
+
+// Secteurs horizontal
+function loadSecteurs(annee) {
+  fetch('/api/secteurs/'+annee).then(r=>r.json()).then(d=>{
+    if(window._cs) window._cs.destroy();
+    window._cs = new Chart(document.getElementById('chartSecteurs'), {
+      type: 'bar',
+      data: {
+        labels: d.labels.map(l => l.length>26 ? l.slice(0,26)+'…' : l),
+        datasets: [{
+          data: d.values,
+          backgroundColor: 'rgba(16,185,129,.75)',
+          borderRadius: 4,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        animation: { duration: 400, easing: 'easeOutQuart' },
+        plugins: { tooltip: { callbacks: { label: c => c.raw.toLocaleString('fr-FR') + ' créations' } } },
+        scales: {
+          x: { ticks: { callback: v => (v/1000).toFixed(1)+'k' } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  });
+}
+loadSecteurs(2024);
+document.getElementById('anneeSelect').addEventListener('change', e => loadSecteurs(e.target.value));
+
+// Corrélation scatter
+fetch('/api/correlation').then(r=>r.json()).then(d=>{
+  new Chart(document.getElementById('chartCorr'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: d.chomage.map((c,i) => ({ x:c, y:d.creations[i], label:d.annees[i] })),
+        backgroundColor: d.annees.map(y => y==2020 ? 'rgba(239,68,68,.8)' : 'rgba(27,79,155,.8)'),
+        pointRadius: 7,
+        pointHoverRadius: 9
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 500 },
+      plugins: {
+        tooltip: { callbacks: { label: c => c.raw.label+' — Chô:'+c.raw.x+'% / '+c.raw.y.toLocaleString('fr-FR')+' créa.' } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Taux de chômage (%)' } },
+        y: { title: { display: true, text: 'Créations' }, ticks: { callback: v => (v/1000).toFixed(0)+'k' } }
+      }
+    }
+  });
+});
+
+// Prédictions 2025
+fetch('/api/predict/all?annee=2025&chomage=6.5').then(r=>r.json()).then(d=>{
+  const top = d.slice(0,8);
+  new Chart(document.getElementById('chartPred'), {
+    type: 'bar',
+    data: {
+      labels: top.map(s => s.secteur.length>22 ? s.secteur.slice(0,22)+'…' : s.secteur),
+      datasets: [{
+        data: top.map(s => s.prediction),
+        backgroundColor: 'rgba(139,92,246,.75)',
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      plugins: { tooltip: { callbacks: { label: c => c.raw.toLocaleString('fr-FR') + ' créations prédites' } } },
+      scales: {
+        x: { ticks: { callback: v => (v/1000).toFixed(1)+'k' } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

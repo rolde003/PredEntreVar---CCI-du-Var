@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block title %}Simulateur{% endblock %}
+{% block content %}
+
+<div class="flex items-c jc-sb mb-24 fade-up">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--navy)">Simulateur de prédiction</h1>
+    <p class="section-sub">Modèle Ridge · Régression supervisée · R² = 0,961</p>
+  </div>
+  <span class="badge badge-blue">CCI du Var — DEP-83</span>
+</div>
+
+<div class="grid g-55 fade-up">
+
+  <!-- Formulaire -->
+  <div class="card">
+    <div class="card-header mb-16">
+      <div class="section-title">Paramètres de simulation</div>
+    </div>
+    <div class="card-body" style="padding-top:8px">
+
+      <div class="mb-16">
+        <label class="form-label">Secteur d'activité (A21)</label>
+        <select id="secteur" class="form-select">
+          {% for s in secteurs %}
+          <option value="{{ s }}" {% if s=="Construction" %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-16">
+        <label class="form-label">Année cible</label>
+        <select id="annee" class="form-select">
+          {% for y in [2025,2026,2027,2028,2029,2030] %}
+          <option value="{{ y }}" {% if y==2025 %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-16">
+        <label class="form-label">Taux de chômage — <strong id="choVal" style="color:var(--blue)">6,5%</strong></label>
+        <input type="range" id="chomage" min="3" max="15" step="0.1" value="6.5"
+          style="width:100%;accent-color:var(--blue);margin-top:6px;cursor:pointer"
+          oninput="document.getElementById('choVal').textContent=parseFloat(this.value).toFixed(1).replace('.',',')+'%'">
+        <div class="flex jc-sb" style="font-size:11px;color:var(--text-3);margin-top:4px"><span>3%</span><span>15%</span></div>
+      </div>
+
+      <div class="mb-24">
+        <label class="form-label">Nuitées touristiques (milliers) — <strong id="nuitVal" style="color:var(--blue)">15 000</strong></label>
+        <input type="range" id="nuitees" min="8000" max="20000" step="100" value="15000"
+          style="width:100%;accent-color:var(--blue);margin-top:6px;cursor:pointer"
+          oninput="document.getElementById('nuitVal').textContent=parseInt(this.value).toLocaleString('fr-FR')">
+        <div class="flex jc-sb" style="font-size:11px;color:var(--text-3);margin-top:4px"><span>8k</span><span>20k</span></div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="predict()">
+        Calculer la prédiction
+      </button>
+    </div>
+  </div>
+
+  <!-- Résultat -->
+  <div>
+    <div class="card" id="placeholder" style="display:flex;align-items:center;justify-content:center;min-height:360px">
+      <div style="text-align:center;color:var(--text-3)">
+        <div style="font-size:2.5rem;margin-bottom:12px;opacity:.35">◎</div>
+        <div style="font-size:13px">Configurez les paramètres<br>et cliquez sur <strong style="color:var(--text-2)">Calculer</strong></div>
+      </div>
+    </div>
+
+    <div id="result" style="display:none">
+      <!-- Valeur principale -->
+      <div class="card mb-16" style="background:linear-gradient(135deg,#f0f5ff,#fff);border-color:var(--blue)">
+        <div class="card-body" style="text-align:center;padding:28px">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-bottom:12px" id="res-subtitle">—</div>
+          <div style="font-size:48px;font-weight:700;color:var(--blue);letter-spacing:-2px;line-height:1" id="res-val">—</div>
+          <div style="font-size:13px;color:var(--text-2);margin-top:8px">créations d'entreprises prédites</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:6px" id="res-ci">—</div>
+        </div>
+      </div>
+
+      <!-- Métriques -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        <div class="card" style="text-align:center;padding:14px">
+          <div style="font-size:16px;font-weight:700;color:var(--blue)" id="m-r2">—</div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-3);letter-spacing:.4px;margin-top:3px">R²</div>
+        </div>
+        <div class="card" style="text-align:center;padding:14px">
+          <div style="font-size:16px;font-weight:700;color:var(--green)" id="m-rmse">—</div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-3);letter-spacing:.4px;margin-top:3px">RMSE</div>
+        </div>
+        <div class="card" style="text-align:center;padding:14px">
+          <div style="font-size:16px;font-weight:700;color:var(--purple)" id="m-mae">—</div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-3);letter-spacing:.4px;margin-top:3px">MAE</div>
+        </div>
+      </div>
+
+      <!-- Graphique historique -->
+      <div class="card">
+        <div class="card-header" style="padding-bottom:12px">
+          <div class="section-title" id="chart-title">Historique + prédiction</div>
+        </div>
+        <div class="card-body" style="padding-top:0">
+          <canvas id="chartHistorique" height="150"></canvas>
+        </div>
+        <div style="padding:12px 24px;border-top:1px solid var(--border2)">
+          <div class="alert alert-warning" style="font-size:12px">
+            ⚠ Résultat indicatif (±19%). Aide à la décision uniquement.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="result-error" class="alert alert-warning" style="display:none;margin-top:12px"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let histChart = null;
+
+async function predict() {
+  const secteur = document.getElementById('secteur').value;
+  const annee   = parseInt(document.getElementById('annee').value);
+  const chomage = parseFloat(document.getElementById('chomage').value);
+  const nuitees = parseFloat(document.getElementById('nuitees').value);
+
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('result-error').style.display = 'none';
+
+  try {
+    const resp = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secteur, annee, taux_chomage: chomage, nuitees })
+    });
+    const d = await resp.json();
+    if (!resp.ok) {
+      document.getElementById('result-error').textContent = d.error;
+      document.getElementById('result-error').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('res-val').textContent     = d.prediction.toLocaleString('fr-FR');
+    document.getElementById('res-subtitle').textContent = secteur + ' · ' + annee + ' · Chômage ' + chomage + '%';
+    document.getElementById('res-ci').textContent      = 'IC 95% : [' + d.ci_low.toLocaleString('fr-FR') + ' – ' + d.ci_high.toLocaleString('fr-FR') + ']';
+    document.getElementById('m-r2').textContent   = 'R²=' + d.r2;
+    document.getElementById('m-rmse').textContent = 'RMSE=' + d.rmse;
+    document.getElementById('m-mae').textContent  = 'MAE=' + d.mae;
+    document.getElementById('chart-title').textContent = 'Historique + prédiction ' + annee + ' — ' + secteur.slice(0,28);
+    document.getElementById('result').style.display = 'block';
+
+    // Graphique historique
+    const hist = await fetch('/api/secteur-historique?secteur=' + encodeURIComponent(secteur))
+      .then(r => r.json()).catch(() => null);
+
+    if (hist) {
+      if (histChart) { histChart.destroy(); histChart = null; }
+      const labels   = [...hist.labels, String(annee) + '★'];
+      const vals     = [...hist.values, null];
+      const predV    = hist.labels.map(() => null);
+      predV.push(d.prediction);
+
+      histChart = new Chart(document.getElementById('chartHistorique'), {
+        data: {
+          labels,
+          datasets: [
+            { type:'bar', label:'Réel',    data:vals,  backgroundColor:'rgba(27,79,155,.7)',  borderRadius:4, borderSkipped:false },
+            { type:'bar', label:'Prédit',  data:predV, backgroundColor:'rgba(16,185,129,.8)', borderRadius:4, borderSkipped:false }
+          ]
+        },
+        options: {
+          responsive: true,
+          animation: { duration: 400, easing: 'easeOutQuart' },
+          plugins: {
+            legend: { display: true, position: 'bottom' },
+            tooltip: { callbacks: { label: c => c.raw != null ? c.raw.toLocaleString('fr-FR') + ' créations' : null } }
+          },
+          scales: {
+            y: { ticks: { callback: v => v != null ? (v/1000).toFixed(1)+'k' : null } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+  } catch(e) {
+    document.getElementById('result-error').textContent = 'Erreur réseau : ' + e;
+    document.getElementById('result-error').style.display = 'block';
+  }
+}
+</script>
+{% endblock %}
